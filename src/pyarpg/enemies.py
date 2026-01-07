@@ -1,8 +1,10 @@
 import math
 import pygame
 from pyarpg.assets import SPRITE_DICT
+from pyarpg.assets import SOUNDS_DICT
 from pyarpg.skills import FireballProjectile
 from pyarpg.skills import ShortFireballProjectile
+from pyarpg.pickups import DropGlobe
 
 class _BaseEnemy(pygame.sprite.Sprite):
     def __init__(
@@ -50,7 +52,8 @@ class _BaseEnemy(pygame.sprite.Sprite):
         return 1 / self.atk_speed
 
 
-    def take_damage(self, n_dmg):
+    def take_damage(self, n_dmg, world):
+        SOUNDS_DICT["enemy_hit_sound"].play()
         new_hp = self.current_hp - n_dmg
         self.current_hp = max(0, new_hp)
 
@@ -59,6 +62,7 @@ class _BaseEnemy(pygame.sprite.Sprite):
         self.play_damage_feedback = True
 
         if self.current_hp <= 0:
+            world.add_pickup(DropGlobe(self.rect.center))
             self.kill()
             return True
 

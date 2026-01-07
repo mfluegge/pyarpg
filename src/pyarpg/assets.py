@@ -1,5 +1,6 @@
 import pygame
 from pyarpg.config import IMG_DIR
+from pyarpg.config import SOUNDS_DIR
 
 def _add_flash_images(img_dict, suffix="_flash"):
     new_imgs = {}
@@ -21,10 +22,23 @@ def load_images(img_dir):
     }
 
     img_dict["fireball"].set_alpha(180)
+    img_dict["drop_globe"].set_alpha(160)
 
     _add_flash_images(img_dict)
 
     return img_dict
 
-print("Loading Assets")
+def load_sounds(sounds_dir):
+    sound_dict = {
+        "enemy_hit_sound": pygame.Sound(sounds_dir / "hit_sound_1.wav")
+    }
+
+    sound_dict["enemy_hit_sound"].set_volume(0.07)
+
+    return sound_dict
+
+print("Loading Sprites")
 SPRITE_DICT = load_images(IMG_DIR)
+
+print("Loading Sounds")
+SOUNDS_DICT = load_sounds(SOUNDS_DIR)

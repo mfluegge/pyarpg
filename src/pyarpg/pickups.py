@@ -27,11 +27,11 @@ class DropGlobe(pygame.sprite.Sprite):
 
         self.frame_index = 0
         self.animation_speed = 10
+        self.has_been_collected = False
     
     def update(self, dt, world):
-        self.frame_index += self.animation_speed * dt
-        self.frame_index %= len(self.frames)
+        if not self.has_been_collected:
+            self.frame_index += self.animation_speed * dt
+            self.frame_index %= len(self.frames)
 
-        self.image = self.frames[int(self.frame_index)]
-
-
+            self.image = self.frames[int(self.frame_index)]

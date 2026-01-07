@@ -11,7 +11,8 @@ class World:
         self.active_player_skills = pygame.sprite.Group()
         self.active_enemy_skills = pygame.sprite.Group()
 
-        self.pickups = pygame.sprite.Group()
+        self.pickups_waiting = pygame.sprite.Group()
+        self.pickups_collected = pygame.sprite.Group()
 
 
     @property
@@ -49,4 +50,8 @@ class World:
         self.active_player_skills.add(skill)
 
     def add_pickup(self, pickup):
-        self.pickups.add(pickup)
+        self.pickups_waiting.add(pickup)
+    
+    def mark_pickup_as_collected(self, pickup):
+        self.pickups_waiting.remove(pickup)
+        self.pickups_collected.add(pickup)
