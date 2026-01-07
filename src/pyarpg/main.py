@@ -6,12 +6,13 @@ pygame.init()
 pygame.display.set_caption("PyARPG")
 screen = pygame.display.set_mode((1600, 1000))
 
-from pyarpg.assets import IMAGE_DICT
+from pyarpg.assets import SPRITE_DICT
 from pyarpg.world import World
 from pyarpg.level import spawn_random_enemies
 from pyarpg.skills import FireballProjectile
 from pyarpg.ui import draw_enemy_hp_bars
 from pyarpg.player import Player
+from pyarpg.pickups import DropGlobe
 
 
 BG_COLOR = (48, 47, 61)
@@ -56,11 +57,14 @@ while running:
     world.active_player_skills.update(dt, world)
     world.enemies.update(dt, world)
     world.active_enemy_skills.update(dt, world)
+    world.pickups.update(dt, world)
 
     hits = pygame.sprite.groupcollide(world.active_player_skills, world.enemies, dokilla=True, dokillb=False)
     for projectile, hit_enemies in hits.items():
         for enemy in hit_enemies:
             enemies_dies = enemy.take_damage(projectile.damage)
+            if enemies_dies:
+                world.add_pickup(DropGlobe(enemy.rect.center))
 
     hits = pygame.sprite.groupcollide(world.active_enemy_skills, world.players, dokilla=True, dokillb=False)
     for attack, hit_players in hits.items():
@@ -69,6 +73,7 @@ while running:
             print(player.current_hp)
             
     screen.fill(BG_COLOR)
+    world.pickups.draw(screen)
     world.enemies.draw(screen)
     world.players.draw(screen)
     world.active_enemy_skills.draw(screen)

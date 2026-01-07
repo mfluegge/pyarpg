@@ -1,5 +1,5 @@
 import pygame
-from pyarpg.assets import IMAGE_DICT
+from pyarpg.assets import SPRITE_DICT
 
 class Projectile(pygame.sprite.Sprite):
     target_range = None
@@ -54,7 +54,7 @@ class FireballProjectile(Projectile):
     target_range = 400
     def __init__(self, start_pos, aimed_target_pos):
         super().__init__(
-            image=IMAGE_DICT["fireball"],
+            image=SPRITE_DICT["fireball"],
             start_pos=start_pos,
             aimed_target_pos=aimed_target_pos,
             move_speed=600,
@@ -68,7 +68,7 @@ class ShortFireballProjectile(Projectile):
 
     def __init__(self, start_pos, aimed_target_pos):
         super().__init__(
-            image=IMAGE_DICT["fireball"],
+            image=SPRITE_DICT["fireball"],
             start_pos=start_pos,
             aimed_target_pos=aimed_target_pos,
             move_speed=600,

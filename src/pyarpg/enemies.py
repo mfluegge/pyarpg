@@ -1,6 +1,6 @@
 import math
 import pygame
-from pyarpg.assets import IMAGE_DICT
+from pyarpg.assets import SPRITE_DICT
 from pyarpg.skills import FireballProjectile
 from pyarpg.skills import ShortFireballProjectile
 
@@ -130,8 +130,8 @@ class _BaseEnemy(pygame.sprite.Sprite):
 class RangedEnemy(_BaseEnemy):
     def __init__(self, start_pos):
         super().__init__(
-            image=IMAGE_DICT["dummy"],
-            flash_image=IMAGE_DICT["dummy_flash"],
+            image=SPRITE_DICT["dummy"],
+            flash_image=SPRITE_DICT["dummy_flash"],
             start_pos=start_pos,
             attack=FireballProjectile
         )
@@ -139,8 +139,8 @@ class RangedEnemy(_BaseEnemy):
 class MeleeEnemy(_BaseEnemy):
     def __init__(self, start_pos):
         super().__init__(
-            image=IMAGE_DICT["melee"],
-            flash_image=IMAGE_DICT["melee_flash"],
+            image=SPRITE_DICT["melee"],
+            flash_image=SPRITE_DICT["melee_flash"],
             start_pos=start_pos,
             attack=ShortFireballProjectile
         )

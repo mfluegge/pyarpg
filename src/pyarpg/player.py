@@ -1,13 +1,13 @@
 import pygame
 from pygame import Vector2
-from pyarpg.assets import IMAGE_DICT
+from pyarpg.assets import SPRITE_DICT
 from pyarpg.world import World
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos, move_speed=400, dash_speed=1200, dash_distance=150, max_hp=100):
         super().__init__()
 
-        self.image = IMAGE_DICT["player"]
+        self.image = SPRITE_DICT["player"]
         self.rect = self.image.get_rect(center=pos)
 
         self.pos: Vector2 = pygame.Vector2(self.rect.center)

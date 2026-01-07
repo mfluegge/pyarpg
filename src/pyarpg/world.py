@@ -11,6 +11,9 @@ class World:
         self.active_player_skills = pygame.sprite.Group()
         self.active_enemy_skills = pygame.sprite.Group()
 
+        self.pickups = pygame.sprite.Group()
+
+
     @property
     def player(self):
         return self.players.sprite
@@ -30,6 +33,9 @@ class World:
     def get_active_player_skills(self):
         return self.active_player_skills
 
+    def get_pickups(self):
+        return self.pickups
+
     def add_enemy(self, enemy):
         self.enemies.add(enemy)
     
@@ -41,3 +47,6 @@ class World:
 
     def add_active_player_skill(self, skill):
         self.active_player_skills.add(skill)
+
+    def add_pickup(self, pickup):
+        self.pickups.add(pickup)

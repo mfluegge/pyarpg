@@ -17,6 +17,7 @@ def load_images(img_dir):
         "fireball": pygame.image.load(img_dir / "fireball.png").convert_alpha(),
         "dummy": pygame.image.load(img_dir / "dummy.png").convert_alpha(),
         "melee": pygame.image.load(img_dir / "melee.png").convert_alpha(),
+        "drop_globe": pygame.image.load(img_dir / "monster_globe_drop_test.png").convert_alpha(),
     }
 
     img_dict["fireball"].set_alpha(180)
@@ -26,4 +27,4 @@ def load_images(img_dir):
     return img_dict
 
 print("Loading Assets")
-IMAGE_DICT = load_images(IMG_DIR)
+SPRITE_DICT = load_images(IMG_DIR)
