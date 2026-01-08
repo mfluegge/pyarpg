@@ -15,9 +15,11 @@ class _BaseEnemy(pygame.sprite.Sprite):
             max_hp=100,
             attack=None,
             aggro_range=300,
-            aggro_time=5,
+            aggro_time=3,
             atk_speed=0.5,
-            move_speed=250
+            move_speed=250,
+            min_distance_to_player=0,
+            max_distance_to_player=100,
         ):
         super().__init__()
         self.max_hp = max_hp
@@ -27,6 +29,7 @@ class _BaseEnemy(pygame.sprite.Sprite):
         self.image = image
         self.flash_image = flash_image
         self.rect = self.base_image.get_rect(center=start_pos)
+        self.pos = pygame.Vector2(self.rect.center)
 
         # Hit Feedback
         self.play_damage_feedback = False
@@ -38,10 +41,14 @@ class _BaseEnemy(pygame.sprite.Sprite):
         # enemy stats
         self.attack = attack
         self.aggro_range = aggro_range
+        self.aggro_time = aggro_time
         self.atk_speed = atk_speed
+        self.move_speed = move_speed
+        self.min_distance_to_player = min_distance_to_player
+        self.max_distance_to_player = max_distance_to_player
 
         self.is_aggro = False
-
+        self.remaining_aggro_duration = 0
 
     @property
     def hp_percent(self):
@@ -69,22 +76,82 @@ class _BaseEnemy(pygame.sprite.Sprite):
         return False
     
     def _set_aggro(self, player_pos):
-        if self.is_aggro:
-            return
-        
         distance = (self.rect.center - player_pos).length()
 
         if distance <= self.aggro_range:
             self.is_aggro = True
+            self.remaining_aggro_duration = self.aggro_time
+
+        if self.remaining_aggro_duration <= 0:
+            self.is_aggro = False
 
     def update(self, dt, world):
         self._set_aggro(world.get_player().pos)
 
         if self.is_aggro:
             self._launch_attack(dt, world)
+            self._move_into_player_range(dt, world)
+            self.remaining_aggro_duration -= dt
 
         if self.play_damage_feedback:
             self._damage_feedback(dt)
+
+    def _update_pos(self, new_pos):
+        self.pos = new_pos
+        self.rect.center = new_pos
+
+
+    def _move_into_player_range_old(self, dt, world):
+        player_pos = world.get_player().pos
+
+        diff = self.pos - player_pos
+        direction_from_player = diff.normalize()
+        direction_towards_player = -direction_from_player
+        distance = diff.length()
+        coverable_distance = self.move_speed * dt
+
+        if distance < self.min_distance_to_player:
+            step = coverable_distance * direction_from_player
+            self._update_pos(self.pos + step)
+        
+        elif distance > self.max_distance_to_player:
+            step = coverable_distance * direction_towards_player
+            self._update_pos(self.pos + step)
+
+
+    def _move_into_player_range(self, dt, world):
+        player_pos = world.get_player().pos
+
+        diff = player_pos - self.pos
+        dist = diff.length()
+        if dist == 0:
+            return
+
+        dir_to_player = diff / dist
+        dir_from_player = -dir_to_player
+
+        # Base behavior: keep within [min, max]
+        desired = pygame.Vector2(0, 0)
+        if dist < self.min_distance_to_player:
+            desired = dir_from_player
+        elif dist > self.max_distance_to_player:
+            desired = dir_to_player
+        else:
+            # Inside the band: don't force movement (or optionally orbit / mild noise)
+            desired = pygame.Vector2(0, 0)
+
+        # Separation behavior: always applied (or only when inside the band)
+        sep = self._separation_vec(world, radius=35, strength=0.7)
+
+        steer = desired + sep
+
+        if steer.length_squared() == 0:
+            return
+
+        steer = steer.normalize()
+        step = steer * (self.move_speed * dt)
+        self._update_pos(self.pos + step)
+
 
 
     def _launch_attack(self, dt, world):
@@ -96,7 +163,7 @@ class _BaseEnemy(pygame.sprite.Sprite):
         if self.time_since_last_attack < self.cooldown_time:
             return
 
-        dist = (self.rect.center - world.get_player().pos).length()
+        dist = (self.pos - world.get_player().pos).length()
 
         if dist < self.attack.target_range:
             self.time_since_last_attack = 0
@@ -130,6 +197,36 @@ class _BaseEnemy(pygame.sprite.Sprite):
                 self.image = self.base_image
                 self.rect = self.image.get_rect(center=center)
 
+    def _separation_vec(self, world, radius=40, strength=1.0):
+        """Boids-style separation: push away from nearby enemies."""
+        neighbors = world.enemies  # SpriteGroup
+        r2 = radius * radius
+
+        sep = pygame.Vector2(0, 0)
+        count = 0
+
+        for other in neighbors:
+            if other is self:
+                continue
+
+            # Use pos if available, else rect center
+            offset = self.pos - other.pos
+            d2 = offset.x * offset.x + offset.y * offset.y
+
+            if 0 < d2 < r2:
+                # Weight by inverse distance squared: very strong when too close
+                sep += offset / d2
+                count += 1
+
+        if count:
+            sep /= count  # average
+
+        if sep.length_squared() > 0:
+            sep = sep.normalize() * strength
+
+        return sep
+
+
 
 class RangedEnemy(_BaseEnemy):
     def __init__(self, start_pos):
@@ -137,7 +234,9 @@ class RangedEnemy(_BaseEnemy):
             image=SPRITE_DICT["dummy"],
             flash_image=SPRITE_DICT["dummy_flash"],
             start_pos=start_pos,
-            attack=FireballProjectile
+            attack=FireballProjectile,
+            min_distance_to_player=200,
+            max_distance_to_player=FireballProjectile.target_range - 5 
         )
 
 class MeleeEnemy(_BaseEnemy):
@@ -146,5 +245,7 @@ class MeleeEnemy(_BaseEnemy):
             image=SPRITE_DICT["melee"],
             flash_image=SPRITE_DICT["melee_flash"],
             start_pos=start_pos,
-            attack=ShortFireballProjectile
+            attack=ShortFireballProjectile,
+            min_distance_to_player=5,
+            max_distance_to_player=30
         )

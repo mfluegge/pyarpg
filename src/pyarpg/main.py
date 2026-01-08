@@ -17,13 +17,16 @@ from pyarpg.ui import draw_enemy_hp_bars
 from pyarpg.player import Player
 from pyarpg.pickups import DropGlobe
 
+class PlayerStats:
+    def __init__(self):
+        self.loot_points = 0
 
 BG_COLOR = (48, 47, 61)
 screen.fill(BG_COLOR)
 
 clock = pygame.time.Clock()
 running = True
-world = World(screen)
+world = World(screen, PlayerStats())
 
 
 player = Player(pos=(500, 400))
@@ -90,6 +93,12 @@ while running:
             player_.take_damage(attack.damage)
             print(player.current_hp)
     
+    for pickup in world.pickups_waiting:
+        if player.pickup_rect.colliderect(pickup.rect):
+            pickup.collect(1600, 900)
+            world.pickups_waiting.remove(pickup)
+            world.pickups_collected.add(pickup)
+
             
     screen.fill(BG_COLOR)
     world.pickups_waiting.draw(screen)

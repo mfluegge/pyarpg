@@ -2,7 +2,7 @@ import pygame
 
 
 class World:
-    def __init__(self, screen):
+    def __init__(self, screen, player_stats):
         self.max_width = screen.width
         self.max_height = screen.height
         self.players = pygame.sprite.GroupSingle()
@@ -14,6 +14,7 @@ class World:
         self.pickups_waiting = pygame.sprite.Group()
         self.pickups_collected = pygame.sprite.Group()
 
+        self.player_stats = player_stats
 
     @property
     def player(self):
@@ -51,7 +52,4 @@ class World:
 
     def add_pickup(self, pickup):
         self.pickups_waiting.add(pickup)
-    
-    def mark_pickup_as_collected(self, pickup):
-        self.pickups_waiting.remove(pickup)
-        self.pickups_collected.add(pickup)
+

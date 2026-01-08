@@ -4,11 +4,13 @@ from pyarpg.assets import SPRITE_DICT
 from pyarpg.world import World
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, pos, move_speed=400, dash_speed=1200, dash_distance=150, max_hp=100):
+    def __init__(self, pos, move_speed=400, dash_speed=1200, dash_distance=150, max_hp=100, pickup_radius=90):
         super().__init__()
 
+        self.pickup_radius = pickup_radius
         self.image = SPRITE_DICT["player"]
         self.rect = self.image.get_rect(center=pos)
+        self.pickup_rect = self.rect.inflate(self.pickup_radius * 2, self.pickup_radius * 2)
 
         self.pos: Vector2 = pygame.Vector2(self.rect.center)
 
@@ -49,6 +51,9 @@ class Player(pygame.sprite.Sprite):
     def _update_pos(self, new_pos):
         self.pos = new_pos
         self.rect.center = new_pos
+        
+        self.pickup_rect = self.rect.inflate(self.pickup_radius * 2, self.pickup_radius * 2)
+
 
     def move_to_target(self, dt: float):
         if self.current_target_pos is None:
