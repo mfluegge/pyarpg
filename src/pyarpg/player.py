@@ -4,7 +4,7 @@ from pyarpg.assets import SPRITE_DICT
 from pyarpg.world import World
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, pos, move_speed=400, dash_speed=1200, dash_distance=150, max_hp=100, pickup_radius=90):
+    def __init__(self, pos, move_speed=400, dash_speed=1200, dash_distance=150, max_hp=100, pickup_radius=40):
         super().__init__()
 
         self.pickup_radius = pickup_radius
@@ -24,7 +24,7 @@ class Player(pygame.sprite.Sprite):
 
         self.max_hp = max_hp
         self.current_hp = max_hp
-
+        
     def set_target_pos(self, target_pos):
         if self.is_dashing:
             return
@@ -46,16 +46,41 @@ class Player(pygame.sprite.Sprite):
 
     def update(self, dt: float, world: World):
         if self.current_target_pos is not None:
-            self.move_to_target(dt)
+            self.move_to_target(dt, world)
 
-    def _update_pos(self, new_pos):
+    def _update_pos(self, new_pos, world):
+        max_w = world.max_width - self.rect.width // 2
+        max_h = world.max_height - self.rect.height // 2
+
+        if new_pos[0] > max_w:
+            new_pos[0] = max_w
+            self.current_target_pos = None
+            self.is_dashing = False
+
+        elif new_pos[0] < self.rect.width // 2:
+            new_pos[0] = self.rect.width // 2
+            self.current_target_pos = None
+            self.is_dashing = False
+
+
+        if new_pos[1] > max_h:
+            new_pos[1] = max_h
+            self.current_target_pos = None
+            self.is_dashing = False
+
+        elif new_pos[1] < self.rect.height // 2:
+            new_pos[1] = self.rect.height // 2
+            self.current_target_pos = None
+            self.is_dashing = False
+
+
         self.pos = new_pos
         self.rect.center = new_pos
         
         self.pickup_rect = self.rect.inflate(self.pickup_radius * 2, self.pickup_radius * 2)
 
 
-    def move_to_target(self, dt: float):
+    def move_to_target(self, dt: float, world):
         if self.current_target_pos is None:
             return
 
@@ -68,11 +93,11 @@ class Player(pygame.sprite.Sprite):
         distance = diff.length()
         
         if distance <= coverable_distance:
-            self._update_pos(self.current_target_pos)
+            self._update_pos(self.current_target_pos, world)
             self.current_target_pos = None
             self.is_dashing = False
             return
         
         direction = diff / distance
         step = direction * coverable_distance
-        self._update_pos(self.pos + step)
+        self._update_pos(self.pos + step, world)

@@ -76,3 +76,107 @@ class ShortFireballProjectile(Projectile):
             max_distance=80,
             muzzle_offset=10
         )
+
+class GroundCircleAOESkill(pygame.sprite.Sprite):
+    def __init__(self, image, aimed_target_pos, max_distance=500, radius=30, damage=10, duration=0.2):
+        super().__init__()
+
+        self.image = image
+        self.rect = self.image.get_rect(center=aimed_target_pos)
+        self.pos = aimed_target_pos
+        self.radius = radius
+        self.damage = damage
+
+        self.expired = False
+
+        self.duration = duration
+        self.remaining_duration = duration
+        
+        self.frames_active = 0
+
+    def update(self, dt, world):
+        self.frames_active += 1
+        self.remaining_duration -= dt
+
+        if self.remaining_duration <= 0:
+            self.kill()
+
+    def get_collisions(self, entities):
+        if self.frames_active >= 2:
+            return []
+    
+        return [
+            e 
+            for e in entities
+            if (self.pos[0] - e.rect.center[0]) ** 2 + (self.pos[1] - e.rect.center[1]) ** 2 <= self.radius * self.radius
+        ]
+
+
+class BlueCircleAOESkill(GroundCircleAOESkill):
+    def __init__(self, aimed_target_pos, radius=120):
+        image = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+        pygame.draw.circle(image, (40, 92, 196, 100), (radius, radius), radius)
+
+        super().__init__(
+            image=image,
+            aimed_target_pos=aimed_target_pos,
+            radius=radius,
+            damage=20
+        )
+
+
+class RingOfFire(pygame.sprite.Sprite):
+    def __init__(self, aimed_target_pos, duration=0.3):
+        super().__init__()
+    
+        self.sprite_sheet = SPRITE_DICT["ring_of_fire"]
+        self.width_per_frame = 256
+        self.height = 256
+        self.n_frames = 12
+
+        self.frames = []
+        for i in range(self.n_frames):
+            rect = pygame.Rect(i * self.width_per_frame, 0, self.width_per_frame, self.height)
+            
+            self.frames.append(self.sprite_sheet.subsurface(rect).copy())
+    
+        self.image = self.frames[0]
+        self.rect = self.image.get_rect(center=aimed_target_pos)
+        self.pos = aimed_target_pos
+
+        self.frame_index = 0
+        self.animation_speed = 30
+
+        self.radius = 128
+        self.damage = 20
+
+        self.expired = False
+
+        self.duration = duration
+        self.remaining_duration = duration
+        
+        self.frames_active = 0
+
+    def update(self, dt, world):
+        self.frames_active += 1
+        self.remaining_duration -= dt
+
+        if self.remaining_duration <= 0:
+            self.kill()
+            return 
+
+        self.frame_index += self.animation_speed * dt
+        self.frame_index %= len(self.frames)
+        self.image = self.frames[int(self.frame_index)]
+
+    def get_collisions(self, entities):
+        if self.frames_active >= 2:
+            return []
+    
+        return [
+            e 
+            for e in entities
+            if (self.pos[0] - e.rect.center[0]) ** 2 + (self.pos[1] - e.rect.center[1]) ** 2 <= self.radius * self.radius
+        ]
+
+

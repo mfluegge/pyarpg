@@ -2,7 +2,7 @@ import pygame
 from pygame import Vector2
 import math
 
-init_size = (1600, 1000)
+init_size = (1600, 900)
 pygame.init()
 pygame.display.set_caption("PyARPG")
 real_screen = pygame.display.set_mode(init_size, pygame.RESIZABLE)
@@ -13,19 +13,23 @@ from pyarpg.assets import SOUNDS_DICT
 from pyarpg.world import World
 from pyarpg.level import spawn_random_enemies
 from pyarpg.skills import FireballProjectile
+from pyarpg.skills import BlueCircleAOESkill
+from pyarpg.skills import RingOfFire
 from pyarpg.ui import draw_enemy_hp_bars
 from pyarpg.player import Player
 from pyarpg.pickups import DropGlobe
+from pyarpg.ui import BottomUIBar
+from pyarpg.stats import PlayerStats
 
-class PlayerStats:
-    def __init__(self):
-        self.loot_points = 0
+
 
 BG_COLOR = (48, 47, 61)
 screen.fill(BG_COLOR)
 
 clock = pygame.time.Clock()
 running = True
+ui_bar = BottomUIBar(*init_size)
+
 world = World(screen, PlayerStats())
 
 
@@ -36,7 +40,11 @@ button_to_skill = {
     pygame.K_q: FireballProjectile
 }
 
-spawn_random_enemies(world, n_enemies=10)
+button_to_ground_skill = {
+    pygame.K_w: RingOfFire
+}
+
+spawn_random_enemies(world, n_enemies=200)
 
 while running:
     #aimed_target_pos = pygame.Vector2(pygame.mouse.get_pos())
@@ -62,6 +70,10 @@ while running:
             if skill is not None:
                 world.add_active_player_skill(skill(player.pos, aimed_target_pos))
 
+            skill = button_to_ground_skill.get(event.key)
+            if skill is not None:
+                world.add_active_player_ground_skill(skill(aimed_target_pos))
+
             if event.key == pygame.K_SPACE:
                 player.set_dash_target(aimed_target_pos)
 
@@ -77,10 +89,12 @@ while running:
 
     world.players.update(dt, world)
     world.active_player_skills.update(dt, world)
+    world.active_player_ground_skills.update(dt, world)
     world.enemies.update(dt, world)
     world.active_enemy_skills.update(dt, world)
     world.pickups_waiting.update(dt, world)
     world.pickups_collected.update(dt, world)
+    ui_bar.update(dt, world)
 
     hits = pygame.sprite.groupcollide(world.active_player_skills, world.enemies, dokilla=True, dokillb=False)
     for projectile, hit_enemies in hits.items():
@@ -95,22 +109,27 @@ while running:
     
     for pickup in world.pickups_waiting:
         if player.pickup_rect.colliderect(pickup.rect):
-            pickup.collect(1600, 900)
+            pickup.collect(*ui_bar.loot_count_pos.center)
             world.pickups_waiting.remove(pickup)
             world.pickups_collected.add(pickup)
 
+
+    for ground_skill in world.active_player_ground_skills:
+        for enemy in ground_skill.get_collisions(world.enemies):
+            enemy.take_damage(ground_skill.damage, world)
             
     screen.fill(BG_COLOR)
+    world.active_player_ground_skills.draw(screen)
     world.pickups_waiting.draw(screen)
-    world.pickups_collected.draw(screen)
     world.enemies.draw(screen)
     world.players.draw(screen)
     world.active_enemy_skills.draw(screen)
     world.active_player_skills.draw(screen)
     draw_enemy_hp_bars(world, screen)
+    ui_bar.draw(screen)
+    world.pickups_collected.draw(screen)
 
     # fps
-    #text_surface = my_font.render(f"Kills: {kills}", False, (66, 161, 26))    
     #screen.blit(text_surface, (0,0))
 
     scaled = pygame.transform.scale(screen, real_screen.get_size())

@@ -10,6 +10,7 @@ class World:
         
         self.active_player_skills = pygame.sprite.Group()
         self.active_enemy_skills = pygame.sprite.Group()
+        self.active_player_ground_skills = pygame.sprite.Group()
 
         self.pickups_waiting = pygame.sprite.Group()
         self.pickups_collected = pygame.sprite.Group()
@@ -52,4 +53,7 @@ class World:
 
     def add_pickup(self, pickup):
         self.pickups_waiting.add(pickup)
+    
+    def add_active_player_ground_skill(self, skill):
+        self.active_player_ground_skills.add(skill)
 

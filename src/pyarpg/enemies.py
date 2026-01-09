@@ -18,6 +18,7 @@ class _BaseEnemy(pygame.sprite.Sprite):
             aggro_time=3,
             atk_speed=0.5,
             move_speed=250,
+            back_off_move_speed=100,
             min_distance_to_player=0,
             max_distance_to_player=100,
         ):
@@ -44,6 +45,7 @@ class _BaseEnemy(pygame.sprite.Sprite):
         self.aggro_time = aggro_time
         self.atk_speed = atk_speed
         self.move_speed = move_speed
+        self.backoff_move_speed = back_off_move_speed
         self.min_distance_to_player = min_distance_to_player
         self.max_distance_to_player = max_distance_to_player
 
@@ -61,6 +63,8 @@ class _BaseEnemy(pygame.sprite.Sprite):
 
     def take_damage(self, n_dmg, world):
         SOUNDS_DICT["enemy_hit_sound"].play()
+        self.is_aggro = True
+        self.remaining_aggro_duration = self.aggro_time
         new_hp = self.current_hp - n_dmg
         self.current_hp = max(0, new_hp)
 
@@ -96,7 +100,24 @@ class _BaseEnemy(pygame.sprite.Sprite):
         if self.play_damage_feedback:
             self._damage_feedback(dt)
 
-    def _update_pos(self, new_pos):
+    def _update_pos(self, new_pos, world):
+        max_w = world.max_width - self.rect.width // 2
+        max_h = world.max_height - self.rect.height // 2
+
+        if new_pos[0] > max_w:
+            new_pos[0] = max_w
+
+        elif new_pos[0] < self.rect.width // 2:
+            new_pos[0] = self.rect.width // 2
+
+
+        if new_pos[1] > max_h:
+            new_pos[1] = max_h
+
+        elif new_pos[1] < self.rect.height // 2:
+            new_pos[1] = self.rect.height // 2
+
+
         self.pos = new_pos
         self.rect.center = new_pos
 
@@ -134,11 +155,14 @@ class _BaseEnemy(pygame.sprite.Sprite):
         desired = pygame.Vector2(0, 0)
         if dist < self.min_distance_to_player:
             desired = dir_from_player
+            ms = self.backoff_move_speed
         elif dist > self.max_distance_to_player:
             desired = dir_to_player
+            ms = self.move_speed
         else:
             # Inside the band: don't force movement (or optionally orbit / mild noise)
             desired = pygame.Vector2(0, 0)
+            ms = self.move_speed
 
         # Separation behavior: always applied (or only when inside the band)
         sep = self._separation_vec(world, radius=35, strength=0.7)
@@ -149,9 +173,8 @@ class _BaseEnemy(pygame.sprite.Sprite):
             return
 
         steer = steer.normalize()
-        step = steer * (self.move_speed * dt)
-        self._update_pos(self.pos + step)
-
+        step = steer * (ms * dt)
+        self._update_pos(self.pos + step, world)
 
 
     def _launch_attack(self, dt, world):
@@ -197,7 +220,7 @@ class _BaseEnemy(pygame.sprite.Sprite):
                 self.image = self.base_image
                 self.rect = self.image.get_rect(center=center)
 
-    def _separation_vec(self, world, radius=40, strength=1.0):
+    def _separation_vec_old(self, world, radius=40, strength=1.0):
         """Boids-style separation: push away from nearby enemies."""
         neighbors = world.enemies  # SpriteGroup
         r2 = radius * radius
@@ -221,6 +244,68 @@ class _BaseEnemy(pygame.sprite.Sprite):
         if count:
             sep /= count  # average
 
+        if sep.length_squared() > 0:
+            sep = sep.normalize() * strength
+
+        return sep
+    
+    def _separation_vec(self, world, radius=40, strength=1.0, edge_margin=60, edge_strength=1.0):
+        """Boids-style separation + soft screen-edge avoidance."""
+        neighbors = world.enemies
+        r2 = radius * radius
+
+        sep = pygame.Vector2(0, 0)
+        count = 0
+
+        # --- Enemy separation ---
+        for other in neighbors:
+            if other is self:
+                continue
+
+            offset = self.pos - other.pos
+            d2 = offset.x * offset.x + offset.y * offset.y
+
+            if 0 < d2 < r2:
+                sep += offset / d2
+                count += 1
+
+        if count:
+            sep /= count
+
+        # --- Screen edge avoidance ---
+        x, y = self.pos
+        w = world.max_width
+        h = world.max_height
+
+        edge = pygame.Vector2(0, 0)
+
+        # Left edge
+        if x < edge_margin:
+            d = max(x, 1)
+            edge.x += 1.0 / d
+
+        # Right edge
+        if x > w - edge_margin:
+            d = max(w - x, 1)
+            edge.x -= 1.0 / d
+
+        # Top edge
+        if y < edge_margin:
+            d = max(y, 1)
+            edge.y += 1.0 / d
+
+        # Bottom edge
+        if y > h - edge_margin:
+            d = max(h - y, 1)
+            edge.y -= 1.0 / d
+
+        if edge.length_squared() > 0:
+            edge = edge.normalize() * edge_strength
+
+        # Combine forces
+        sep += edge
+
+        # Final normalize & scale
         if sep.length_squared() > 0:
             sep = sep.normalize() * strength
 

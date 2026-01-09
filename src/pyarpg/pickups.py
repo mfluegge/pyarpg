@@ -57,7 +57,7 @@ class DropGlobe(pygame.sprite.Sprite):
         
         if distance <= coverable_distance:
             self._update_pos(self.storage_pos)
-            world.player_stats.loot_points += self.loot_value
+            world.player_stats.loot_count += self.loot_value
             self.kill()
             return
         
