@@ -148,7 +148,7 @@ class RingOfFire(pygame.sprite.Sprite):
         self.animation_speed = 30
 
         self.radius = 128
-        self.damage = 20
+        self.damage = 35
 
         self.expired = False
 

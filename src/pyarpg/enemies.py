@@ -59,6 +59,12 @@ class _BaseEnemy(pygame.sprite.Sprite):
     @property
     def cooldown_time(self):
         return 1 / self.atk_speed
+    
+    def grid_bucket_ix(self, grid_size, n_rows):
+        col_ix = self.pos[0] // grid_size
+        row_ix = self.pos[1] // grid_size
+
+        return col_ix * n_rows + row_ix
 
 
     def take_damage(self, n_dmg, world):
@@ -122,23 +128,6 @@ class _BaseEnemy(pygame.sprite.Sprite):
         self.rect.center = new_pos
 
 
-    def _move_into_player_range_old(self, dt, world):
-        player_pos = world.get_player().pos
-
-        diff = self.pos - player_pos
-        direction_from_player = diff.normalize()
-        direction_towards_player = -direction_from_player
-        distance = diff.length()
-        coverable_distance = self.move_speed * dt
-
-        if distance < self.min_distance_to_player:
-            step = coverable_distance * direction_from_player
-            self._update_pos(self.pos + step)
-        
-        elif distance > self.max_distance_to_player:
-            step = coverable_distance * direction_towards_player
-            self._update_pos(self.pos + step)
-
 
     def _move_into_player_range(self, dt, world):
         player_pos = world.get_player().pos
@@ -165,7 +154,7 @@ class _BaseEnemy(pygame.sprite.Sprite):
             ms = self.move_speed
 
         # Separation behavior: always applied (or only when inside the band)
-        sep = self._separation_vec(world, radius=35, strength=0.7)
+        sep = self._separation_vec(world, radius=30, strength=0.5)
 
         steer = desired + sep
 
@@ -220,34 +209,6 @@ class _BaseEnemy(pygame.sprite.Sprite):
                 self.image = self.base_image
                 self.rect = self.image.get_rect(center=center)
 
-    def _separation_vec_old(self, world, radius=40, strength=1.0):
-        """Boids-style separation: push away from nearby enemies."""
-        neighbors = world.enemies  # SpriteGroup
-        r2 = radius * radius
-
-        sep = pygame.Vector2(0, 0)
-        count = 0
-
-        for other in neighbors:
-            if other is self:
-                continue
-
-            # Use pos if available, else rect center
-            offset = self.pos - other.pos
-            d2 = offset.x * offset.x + offset.y * offset.y
-
-            if 0 < d2 < r2:
-                # Weight by inverse distance squared: very strong when too close
-                sep += offset / d2
-                count += 1
-
-        if count:
-            sep /= count  # average
-
-        if sep.length_squared() > 0:
-            sep = sep.normalize() * strength
-
-        return sep
     
     def _separation_vec(self, world, radius=40, strength=1.0, edge_margin=60, edge_strength=1.0):
         """Boids-style separation + soft screen-edge avoidance."""
