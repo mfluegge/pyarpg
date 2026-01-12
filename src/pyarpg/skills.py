@@ -131,7 +131,7 @@ class RingOfFire(pygame.sprite.Sprite):
     
         self.sprite_sheet = SPRITE_DICT["ring_of_fire"]
         self.width_per_frame = 256
-        self.height = 256
+        self.height = 150
         self.n_frames = 12
 
         self.frames = []

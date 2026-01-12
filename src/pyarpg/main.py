@@ -28,7 +28,7 @@ profiler.enable()
 
 
 
-BG_COLOR = (48, 47, 61)
+BG_COLOR = (45, 64, 54) #(45, 64, 47)#(48, 47, 61)
 screen.fill(BG_COLOR)
 
 clock = pygame.time.Clock()
@@ -49,7 +49,7 @@ button_to_ground_skill = {
     pygame.K_w: RingOfFire
 }
 
-spawn_random_enemies(world, n_enemies=100)
+#spawn_random_enemies(world, n_enemies=100)
 """
 cell_size = 64
 n_grid_cols = math.ceil(init_size[0] / cell_size)
@@ -80,14 +80,16 @@ grid_ix_to_neighboring_indices = [
 ]
 """
 
-portal = Portal(pygame.Vector2(70, init_size[1] // 2 + 20))
-slow_mo = 5
-while running:
-    #aimed_target_pos = pygame.Vector2(pygame.mouse.get_pos())
+def inverse_scale_mouse_pos(mx, my):
     mx, my = pygame.mouse.get_pos()
     vw, vh = init_size
     ww, wh = real_screen.get_size()
-    aimed_target_pos = pygame.Vector2(mx * vw / ww, my * vh / wh)
+    return pygame.Vector2(mx * vw / ww, my * vh / wh)
+
+portal = Portal(pygame.Vector2(70, init_size[1] // 2 + 20))
+slow_mo = 5
+while running:
+    aimed_target_pos = inverse_scale_mouse_pos(*pygame.mouse.get_pos())
 
     dt = clock.tick(300) / 1000.0 / max(slow_mo, 1)
     slow_mo -= (dt * 15)
@@ -95,12 +97,8 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:  # 3 = right
-            mx, my = event.pos
-            vw, vh = init_size
-            ww, wh = real_screen.get_size()
-            player_target = pygame.Vector2(mx * vw / ww, my * vh / wh)
-            player.set_target_pos(player_target)
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
+            player.set_target_pos(inverse_scale_mouse_pos(*pygame.mouse.get_pos()))
 
         elif event.type == pygame.KEYDOWN:
             skill = button_to_skill.get(event.key)

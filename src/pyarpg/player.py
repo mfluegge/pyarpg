@@ -8,7 +8,7 @@ class Player(pygame.sprite.Sprite):
         super().__init__()
 
         self.pickup_radius = pickup_radius
-        self.image = SPRITE_DICT["player"]
+        self.image = SPRITE_DICT["player_test"]
         self.rect = self.image.get_rect(center=pos)
         self.pickup_rect = self.rect.inflate(self.pickup_radius * 2, self.pickup_radius * 2)
 

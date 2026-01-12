@@ -36,9 +36,10 @@ def load_images(img_dir):
         "drop_globe": pygame.image.load(img_dir / "monster_globe_drop_test.png").convert_alpha(),
         "empty_skill_slot": pygame.transform.scale(pygame.image.load(img_dir / "empty_skill_slot.png").convert_alpha(), (48, 48)),
         "blue_bean_ellipsis": pygame.image.load(img_dir / "blue_bean_ellipsis.png").convert_alpha(),
-        "ring_of_fire": mute(pygame.transform.scale(pygame.image.load(img_dir / "ring_of_fire_no_outline.png").convert_alpha(), (64 * 12 * 4, 256))),
+        "ring_of_fire": mute(pygame.transform.scale(pygame.image.load(img_dir / "ring_of_fire_no_outline.png").convert_alpha(), (64 * 12 * 4, 150))),
         "tree1": pygame.image.load(img_dir / "tree_1.png").convert_alpha(),
         "portal": pygame.image.load(img_dir / "portal1.png").convert_alpha(),
+        "player_test": pygame.transform.scale(pygame.image.load(img_dir / "player_test.png").convert_alpha(), (60, 72))
     }
 
     img_dict["fireball"].set_alpha(180)
