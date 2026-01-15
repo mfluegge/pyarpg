@@ -314,6 +314,7 @@ class Animation:
 
         if ix + 1 >= len(self.current_playthrough_points):
             self.is_playing = False
+            
         else:
             self.current_playthrough_points = self.current_playthrough_points[ix + 1:]
 
