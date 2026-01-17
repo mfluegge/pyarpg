@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+from dataclasses import field
 import pygame
 from pygame import Vector2
 from PySide6.QtWidgets import QApplication, QFileDialog
@@ -5,7 +7,7 @@ import sys
 
 _qt_app = None
 
-def open_file_dialog():
+def open_file_dialog(*args):
     global _qt_app
 
     # Create QApplication once
@@ -195,6 +197,12 @@ animation_point_color = (100, 200, 100)
 TOP_MARGIN = 60
 DRAW_SURFACE_MARGIN_X = - 400
 
+
+def reset_active_point_animation(state):
+    if state.active_point is not None:
+        state.point_to_animation[state.active_point] = Animation(anchor_points=[], duration=state.animation_duration, target_points=[state.active_point])
+
+
 controls = {
     pygame.K_t: {
         "value": True,
@@ -211,18 +219,12 @@ controls = {
         "key_name": "P"
     },
     pygame.K_r: {
-        "value": False,
-        "type": "bool",
-        "desc": "Start/Stop Recording",
-        "short_name": "recording",
+        "value": None,
+        "type": "call_function",
+        "function": reset_active_point_animation,
+        "desc": "Reset Point Animation",
+        "short_name": "reset_animation",
         "key_name": "R"
-    },
-    pygame.K_d: {
-        "value": False,
-        "type": "bool",
-        "desc": "Discard Current Recording",
-        "short_name": "discard_recording",
-        "key_name": "D"
     },
     pygame.K_TAB: {
         "value": 0,
@@ -318,6 +320,9 @@ class Animation:
         else:
             self.current_playthrough_points = self.current_playthrough_points[ix + 1:]
 
+    def set_duration(self, duration):
+        self.duration = duration
+        self._rebuild_animation_points()
 
     def draw_trajectory(self, surface):
         if self.is_playing:
@@ -325,6 +330,73 @@ class Animation:
         if self.animation_points:
             pygame.draw.lines(surface, (100, 100, 100), False, [p[1] for p in self.animation_points], width=2)
 
+
+class ClickButton:
+    def __init__(self, pos, on_click_function, button_label="", width=70, height=25):
+        self.pos = pygame.Vector2(pos)
+        self.bg = pygame.Surface((width, height))
+        self.bg.fill((150, 150, 150))
+        self.clicked_bg = pygame.Surface((width, height))
+        self.clicked_bg.fill((100, 100, 100))
+        self.rect = self.bg.get_rect(topleft=pos)
+
+        pygame.draw.rect(self.bg, (8, 8, 8), self.bg.get_rect(), 1)
+        pygame.draw.rect(self.clicked_bg, (8, 8, 8), self.clicked_bg.get_rect(), 1)
+
+        self.button_label = button_label
+        label = small_font.render(button_label, True, (50, 50, 120))
+        self.bg.blit(label, (5, 5))
+        self.clicked_bg.blit(label, (5, 5))
+
+        self.on_click_function = on_click_function
+
+        self.was_clicked = False
+        self.click_duration = 0.1
+        self.current_duration = 0
+
+
+    def check_for_click(self, mouse_pos, *args, **kwargs):
+        was_clicked = self.rect.collidepoint(mouse_pos)
+        if was_clicked:
+            self.on_click_function(*args, **kwargs)
+            self.was_clicked = True
+
+    def update(self, dt):
+        if self.was_clicked:
+            if self.current_duration >= self.click_duration:
+                self.current_duration = 0
+                self.was_clicked = False
+            else:
+                self.current_duration += dt
+
+    def draw(self, surface):
+        if self.was_clicked:
+            surface.blit(self.clicked_bg, self.pos)
+        else:
+            surface.blit(self.bg, self.pos)
+
+@dataclass
+class State:
+    animation_duration: float = 1.0
+    animation_duration_label = big_font.render(f"Animation Speed: {1.0}", True, (80, 180, 90))
+    points_to_activity: dict[Point, bool] = field(default_factory=dict)
+    active_point: Point | None = None
+    point_to_animation: dict[Point, Animation] = field(default_factory=dict)
+    click_buttons: list[ClickButton] = field(default_factory=list)
+
+    @property
+    def current_animation(self):
+        if self.active_point:
+            return self.point_to_animation[self.active_point]
+        
+        return None
+
+    def update_animation_duration(self, change):
+        self.animation_duration = max(self.animation_duration + change, 0.1)
+        for animation in self.point_to_animation.values():
+            animation.set_duration(self.animation_duration)
+    
+        self.animation_duration_label = big_font.render(f"Animation Speed: {round(self.animation_duration, 2)}", True, (80, 180, 90))
 
 
 def screen_to_draw(x, y):
@@ -339,14 +411,59 @@ def draw_to_screen(x, y):
 
     return pygame.Vector2(x, y) + pygame.Vector2(draw_x_offset, draw_y_offset)
 
-points_to_activity = {
-    Point(pygame.Vector2(640, 360), "test p1"): False,
-    Point(pygame.Vector2(800, 250), "test p2"): False,
-}
-active_points = []
+def flip_point_activity(state, point):
+    if state.active_point is not None:
+        state.points_to_activity[state.active_point] = False
+     
+    state.points_to_activity[point] = True
+    state.active_point = point
 
-current_animation = Animation(anchor_points=[], duration=1.0, target_points=[])
-all_animations = [current_animation]
+def change_animation_speed(state, change):
+    state.animation_duration = max(state.animation_duration + change, 0.1)
+    for animation in state.point_to_animation.values():
+        animation.set_duration(state.animation_duration)
+
+
+model_points = [       
+    Point(pygame.Vector2(640, 360), "test p1"),
+    Point(pygame.Vector2(800, 250), "test p2"),
+]
+
+state = State(
+    animation_duration=1.0,
+    points_to_activity={
+        point: False
+        for point in model_points
+    },
+    point_to_animation={
+        point: Animation(anchor_points=[], duration=1.0, target_points=[point])
+        for point in model_points
+    }
+)
+
+state.click_buttons = [
+    ClickButton(
+        pos=pygame.Vector2(2200, TOP_MARGIN + 100 + button_ix * 40), 
+        on_click_function=lambda state, point=point: flip_point_activity(state, point), 
+        button_label=point.name
+    )
+    for button_ix, point in enumerate(model_points)
+]
+
+state.click_buttons += [
+    ClickButton(
+        pos=pygame.Vector2(2300, TOP_MARGIN + 100), 
+        on_click_function=lambda state: state.update_animation_duration(-0.05),
+        button_label="Faster Animation",
+        width=100
+    ),
+    ClickButton(
+        pos=pygame.Vector2(2300, TOP_MARGIN + 40 + 100), 
+        on_click_function=lambda state: state.update_animation_duration(0.05), 
+        button_label="Slower Animation",
+        width=100
+    )
+]
 
 while running:
     dt = clock.tick(60) / 1000.0
@@ -367,7 +484,7 @@ while running:
                 control["value"] = not control["value"]
             
             elif control["type"] == "call_function":
-                result = control["function"]()
+                result = control["function"](state)
                 control["value"] = result
                 print("Function Result:", result)
             
@@ -376,48 +493,60 @@ while running:
                 print(control["options"][control["value"]])
 
             if event.key == pygame.K_SPACE:
-                for animation in all_animations:
-                    animation.play()
+                for animation in state.point_to_animation.values():
+                    if animation.animation_points:
+                        animation.play()
 
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             # todo: check if this is actually in the draw surface
             # dimensions for the different windows should be fixed so this can be done
-            flip_activity = []
-            for point in points_to_activity:
-                if point.distance_to_reference(draw_surface_relative_mouse_pos) < 10:
-                    flip_activity.append(point)
+            point_and_distances = []
+            for point in state.points_to_activity:
+                dist = point.distance_to_reference(draw_surface_relative_mouse_pos)
+                if dist < 10:
+                    point_and_distances.append((point, dist))
+                
+            if len(point_and_distances) > 0:
+                next_active_point = min(point_and_distances, key=lambda pd: pd[1])[0]
+                if state.active_point is not None:
+                    state.points_to_activity[state.active_point] = False
 
-            for point in flip_activity:
-                points_to_activity[point] = not points_to_activity[point]
+                state.points_to_activity[next_active_point] = True
+                state.active_point = next_active_point
+
+            for button in state.click_buttons:
+                button.check_for_click(mouse_pos, state)
 
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
             # todo: check if in draw surface
-            if len(active_points) > 0:
+            if state.active_point is not None:
                 next_animation_point = draw_surface_relative_mouse_pos
-                current_animation.add_anchor_point(next_animation_point)
+                state.current_animation.add_anchor_point(next_animation_point)
 
     control_name_to_value = {
         control["short_name"]: control["value"] if not control["type"] == "cycle_options" else control["options"][control["value"]]
         for control in controls.values()
     }
-    active_points = [p for p, active in points_to_activity.items() if active]
 
-    current_animation.target_points = active_points
-    current_animation.set_interpolation_method(control_name_to_value["interpolation_type"])
-
+    if state.current_animation:
+        state.current_animation.set_interpolation_method(control_name_to_value["interpolation_type"])
+    
+    for button in state.click_buttons:
+        button.update(dt)
     # --- draw ---
     screen.fill(WINDOW_BG_COLOR)
     draw_surface.fill(DRAW_SURFACE_BG_COLOR)
 
     if control_name_to_value["render_model_points"]:
-        for point, active in points_to_activity.items():
+        for point, active in state.points_to_activity.items():
             color = active_point_color if active else passive_point_color
             point.draw(draw_surface, color=color)
 
-    for animation in all_animations:
+    for animation in state.point_to_animation.values():
         animation.update_target_points_if_playing(dt)
 
-    current_animation.draw_trajectory(draw_surface)
+    if state.current_animation:
+        state.current_animation.draw_trajectory(draw_surface)
     #for point in current_animation.points:
     #    point.draw(draw_surface, color=animation_point_color)
 
@@ -425,7 +554,7 @@ while running:
 
     if control_name_to_value["render_text"]:
         # Adding text afterwards
-        for point in points_to_activity:
+        for point in state.points_to_activity:
             px, py = draw_to_screen(*point.position)
             label = small_font.render(str(point), True, (220, 220, 220))
             screen.blit(label, (px + 10, py - label.get_height() // 2))
@@ -434,8 +563,8 @@ while running:
     legend = pygame.Surface((400, 900), pygame.SRCALPHA)
     pygame.draw.rect(legend, (40, 40, 40, 255), legend.get_rect())
     legend_y_offset = 60
-    for key, state in controls.items():
-        label = big_font.render(f"{state['key_name']}     {state['desc']}", True, (220, 220, 220))
+    for key, state_ in controls.items():
+        label = big_font.render(f"{state_['key_name']}     {state_['desc']}", True, (220, 220, 220))
         legend.blit(label, (25, legend_y_offset))
         legend_y_offset += 75
 
@@ -445,6 +574,13 @@ while running:
     timeline = pygame.Surface((2060, 340))
     timeline.fill((40, 40, 40))
     screen.blit(timeline, (100, 1000))
+
+    # Adding buttons
+    for button in state.click_buttons:
+        button.draw(screen)
+
+    
+    screen.blit(state.animation_duration_label, (2200, TOP_MARGIN + 50))
 
     pygame.display.flip()
 
